@@ -1,0 +1,39 @@
+# 放到你 repo 的 .github/workflows/update-ips.yml
+
+name: 更新优选IP清单
+
+on:
+  schedule:
+    - cron: '0 */3 * * *'  # 每 3 小时跑一次（UTC 时间），可自行调整
+  workflow_dispatch: {}     # 允许在 Actions 页面手动点「Run workflow」
+
+permissions:
+  contents: write  # 需要这个权限才能 commit 推回 repo
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 设置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 执行测速与发布脚本
+        run: python3 scan_and_publish.py
+
+      - name: 提交变更（若有）
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ips/all.txt
+          if git diff --cached --quiet; then
+            echo "本轮没有变化，跳过提交"
+          else
+            git commit -m "chore: 自动更新优选IP清单 $(date -u '+%Y-%m-%d %H:%M UTC')"
+            git push
+          fi
